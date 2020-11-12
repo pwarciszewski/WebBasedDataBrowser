@@ -33,14 +33,6 @@ class DataFrameTIF(models.Model):
     def __str__(self):
         return(self.data_frame_name)
 
-    def generatePngs(self):
-        concrete_file_name = pathlib.Path(self.upload.path).stem
-        jpegs_dir = TIFsl.ConvertToPNG(self.upload.path, pathlib.Path(self.upload.path).parent / concrete_file_name)
-        jpegs_list = pathlib.Path(jpegs_dir).glob('*.png')
-        jpegs_url = pathlib.Path(self.upload.url).parent / concrete_file_name / 'PNGs'
-        for path in jpegs_list:
-            self.jpegpagefromtif_set.create(page_location=str(jpegs_url / path.name), page_id=path.stem) 
-
     def addProperties(self):
         properties = TIFsl.LoadTIFDescription(self.upload.path)
         for item in properties:
@@ -66,7 +58,6 @@ class DataFrameTIF(models.Model):
         else:
             self.is_processed = True
             super().save()
-
 
     def getResults(self):
         handle_table = {'IMG': self._handleExportOfIMG,
@@ -177,15 +168,6 @@ class ManyDataFrames:
     def addResult(self, result, result_type, result_source):
         for item in self.queryset:
             item.addResult(result, result_type, result_source)
-
-
-class JPEGPageFromTIF(models.Model):
-    source_TIF = models.ForeignKey(DataFrameTIF, on_delete=models.CASCADE)
-    page_location = models.FileField(max_length=1000)
-    page_id = models.IntegerField()
-
-    def __str__(self):
-        return('page: %i' % self.page_id)
 
 
 class TIFProperties(models.Model):
