@@ -1,2 +1,4 @@
 /db.sqlite3
 /uploads
+/DataBrowse/migrations/*
+!/DataBrowse/migrations/__init__.py
