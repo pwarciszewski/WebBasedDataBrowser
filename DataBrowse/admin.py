@@ -1,4 +1,5 @@
 from django.contrib import admin
-from .models import DataFrameTIF
+from .models import DataObject, DataObjectProperty
 
-admin.site.register(DataFrameTIF)
+admin.site.register(DataObject)
+admin.site.register(DataObjectProperty)
