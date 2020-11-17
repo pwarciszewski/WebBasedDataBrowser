@@ -4,12 +4,17 @@ from django.views import generic
 import json
 from django.views.decorators.csrf import csrf_exempt
 
+from django.utils.datastructures import MultiValueDictKeyError
+
 from .forms import UploadDataFrameForm
-from .models import DataFrameTIF, ManyDataFrames
+#from .models import DataObject, ManyDataFrames ADD MANYDATAFRAMES!!!!!!
+from .models import DataObject
 from django.db.models.functions import ExtractDay, ExtractMonth, ExtractYear
 from django.views.decorators.clickjacking import xframe_options_exempt
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 from .lib import TIFsl, operations
 from pathlib import Path
@@ -29,6 +34,7 @@ class IndexView(generic.TemplateView):
     template_name = 'DataBrowse/index.html'
 
 
+# DATA TREE EXPORT
 MONTHS_DICT = {1: 'Jan.', 2: 'Feb.', 3: 'Mar.', 4: 'Apr.',
                5: 'May', 6: 'June', 7: 'Jul.', 8: 'Aug.', 9: 'Sep.',
                10: 'Oct.', 11: 'Nov.', 12: 'Dec.'}
@@ -81,6 +87,39 @@ def getDataTree(request):
     return JsonResponse(getAllDataTree(), safe=False)
 
 
+# FILE UPLOAD AND POST UPLOAD OPERATIONS
+def upload_file(request):
+    if request.method == 'POST':
+        form = UploadDataFrameForm(request.POST, request.FILES)
+        if form.is_valid():
+            dataobject_model = form.save(commit=False)
+            try:
+                properties_to_add = request.POST['properties']
+                for prop in properties_to_add:
+                    dataobject_model.addProperty(properties_to_add[prop])
+            except MultiValueDictKeyError:
+                pass
+            dataobject_model.save() # Post upload operations heavylighting is postponed to release the client
+            return HttpResponse('Succes')
+        else:
+            return(HttpResponseBadRequest('Check data'))
+    else:
+        form = UploadDataFrameForm()
+    return render(request, 'DataBrowse/data_frame_upload.html', {
+        'form': form
+    })
+
+@receiver(post_save, sender=DataObject, dispatch_uid='post_upload_operations')
+def postUploadOperations(sender, instance, **kwargs):
+    if(not instance.is_processed):
+        pass
+        # instance.addProperties()  # Parses frame for its native properties
+        for operation in init_ops.op_list:
+            operations.AVAILABLE_OPERATIONS[operation['operation']]['instance'](instance, **operation['params'])
+        instance.confirmProcessed()
+#
+
+
 @csrf_exempt
 def performOperation(request):
     result = 'Operation performed.'
@@ -91,9 +130,9 @@ def performOperation(request):
             operation = command['operation']
             params = command['parameters']
             print(params)
-            queryset = DataFrameTIF.objects.filter(id__in=selected)
+            queryset = DataObject.objects.filter(id__in=selected)
         else:
-            queryset = DataFrameTIF.objects.none()
+            queryset = DataObject.objects.none()
 
         if operations.AVAILABLE_OPERATIONS[operation]['properties']['type'] == 'one':
             for item in queryset:
@@ -111,7 +150,7 @@ def performOperation(request):
 def fetchRequestedData(request):
     command = json.loads(request.body)
     selected = command['selected']
-    queryset = DataFrameTIF.objects.filter(id__in=selected)
+    queryset = DataObject.objects.filter(id__in=selected)
     response = []
 
     for frame in queryset:
@@ -135,11 +174,11 @@ def fetchRequestedData(request):
 
 def getNewestID(request):
     i = 0
-    frames = DataFrameTIF.objects.order_by('-id')
+    frames = DataObject.objects.order_by('-id')
     try:
         while(not frames[i].is_processed):
             i = i + 1
-        nID = DataFrameTIF.objects.order_by('-id')[i].id
+        nID = DataObject.objects.order_by('-id')[i].id
         return(JsonResponse(nID, safe=False))
     except IndexError:
         return(HttpResponseNotFound('Lack of processed data'))
@@ -150,21 +189,6 @@ def fetchOps(request):
     for op in operations.AVAILABLE_OPERATIONS:
         response[op] = operations.AVAILABLE_OPERATIONS[op]['properties']
     return(HttpResponse(json.dumps(response)))
-
-
-def upload_file(request):
-    if request.method == 'POST':
-        form = UploadDataFrameForm(request.POST, request.FILES)
-        if form.is_valid():
-            form.save()
-            return HttpResponse('Succes')
-        else:
-            return(HttpResponseBadRequest('Check data'))
-    else:
-        form = UploadDataFrameForm()
-    return render(request, 'DataBrowse/data_frame_upload.html', {
-        'form': form
-    })
 
 
 class CleanFileResponse(FileResponse):
@@ -181,7 +205,7 @@ class CleanFileResponse(FileResponse):
 def getPathsFromIDs(ids):
     paths = []
     for item in ids:
-        paths.append(DataFrameTIF.objects.get(id=item).upload.path)
+        paths.append(DataObject.objects.get(id=item).upload.path)
     return paths
 
 
