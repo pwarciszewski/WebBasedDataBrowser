@@ -7,8 +7,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.utils.datastructures import MultiValueDictKeyError
 
 from .forms import UploadDataFrameForm
-#from .models import DataObject, ManyDataFrames ADD MANYDATAFRAMES!!!!!!
-from .models import DataObject
+from .models import DataObject, ManyDataObjects
 from django.db.models.functions import ExtractDay, ExtractMonth, ExtractYear
 from django.views.decorators.clickjacking import xframe_options_exempt
 from django.views.decorators.csrf import csrf_exempt
@@ -30,8 +29,10 @@ from io import BytesIO
 from . import init_ops
 
 
+# MAIN FRONT END APP GENERIC TEMPLATE
 class IndexView(generic.TemplateView):
     template_name = 'DataBrowse/index.html'
+#
 
 
 # DATA TREE EXPORT
@@ -54,9 +55,24 @@ def findInListIfnoThenCreate(target_list, label, expanded=False):
     return index
 
 
+def findInListIfnoThenCreateIteration(target_list, iter_token, expanded=False):
+    index = -1
+    for i in range(len(target_list)):
+        if target_list[i]['iter_token'] == iter_token:
+            index = i
+            break
+
+    if index == -1:
+        label = len(target_list) + 1
+        target_list.insert(0, {'label': label, 'children': [], 'expanded': expanded, 'iter_token': iter_token})
+        index = 0
+
+    return index
+
+
 def getAllDataTree():
     now = datetime.datetime.now()
-    data_entries = DataFrameTIF.objects.all()
+    data_entries = DataObject.objects.all()
     prepared_tree = []
     for item in data_entries:
         date = item.upload_date
@@ -70,6 +86,7 @@ def getAllDataTree():
 
         item_seq_name = item.sequence_name
         item_name = item.data_frame_name
+        item_iteration_token = item.iteration_token
 
         item_id = item.id
 
@@ -77,17 +94,19 @@ def getAllDataTree():
         month_index = findInListIfnoThenCreate(prepared_tree[year_index]['children'], item_month, expanded_m)
         day_index = findInListIfnoThenCreate(prepared_tree[year_index]['children'][month_index]['children'], item_day, expanded_d)
         seq_index = findInListIfnoThenCreate(prepared_tree[year_index]['children'][month_index]['children'][day_index]['children'], item_seq_name)
+        iteration_index = findInListIfnoThenCreateIteration(prepared_tree[year_index]['children'][month_index]['children'][day_index]['children'][seq_index]['children'], item_iteration_token)
 
-        prepared_tree[year_index]['children'][month_index]['children'][day_index]['children'][seq_index]['children'].insert(0, {'label': item_name, 'value': item_id})
+        prepared_tree[year_index]['children'][month_index]['children'][day_index]['children'][seq_index]['children'][iteration_index]['children'].insert(0, {'label': item_name, 'value': item_id})
 
     return(prepared_tree)
 
 
 def getDataTree(request):
     return JsonResponse(getAllDataTree(), safe=False)
+#
 
 
-# FILE UPLOAD AND POST UPLOAD OPERATIONS
+# FILE UPLOAD AND POST UPLOAD OPERATIONS CONTROL
 def upload_file(request):
     if request.method == 'POST':
         form = UploadDataFrameForm(request.POST, request.FILES)
@@ -109,6 +128,7 @@ def upload_file(request):
         'form': form
     })
 
+
 @receiver(post_save, sender=DataObject, dispatch_uid='post_upload_operations')
 def postUploadOperations(sender, instance, **kwargs):
     if(not instance.is_processed):
@@ -120,6 +140,7 @@ def postUploadOperations(sender, instance, **kwargs):
 #
 
 
+# OPERATIONS CONTROL
 @csrf_exempt
 def performOperation(request):
     result = 'Operation performed.'
@@ -129,7 +150,6 @@ def performOperation(request):
             selected = command['selected']
             operation = command['operation']
             params = command['parameters']
-            print(params)
             queryset = DataObject.objects.filter(id__in=selected)
         else:
             queryset = DataObject.objects.none()
@@ -139,13 +159,22 @@ def performOperation(request):
                 operations.AVAILABLE_OPERATIONS[operation]['instance'](item, **params)
 
         elif operations.AVAILABLE_OPERATIONS[operation]['properties']['type'] == 'many':
-            operations.AVAILABLE_OPERATIONS[operation]['instance'](ManyDataFrames(queryset), **params)
+            operations.AVAILABLE_OPERATIONS[operation]['instance'](ManyDataObjects(queryset), **params)
 
     except Exception as E:
         result = str(type(E).__name__)+": " + str(E)
     return(HttpResponse(json.dumps(result)))
 
 
+def fetchOps(request):
+    response = {}
+    for op in operations.AVAILABLE_OPERATIONS:
+        response[op] = operations.AVAILABLE_OPERATIONS[op]['properties']
+    return(HttpResponse(json.dumps(response)))
+#
+
+
+# EXPORTING DATA API CONTROL
 @csrf_exempt
 def fetchRequestedData(request):
     command = json.loads(request.body)
@@ -156,12 +185,12 @@ def fetchRequestedData(request):
     for frame in queryset:
         property_dict = {}
 
-        for tif_property in frame.tifproperties_set.all():
+        for tif_property in frame.dataobjectproperty_set.all():
             property_dict[tif_property.key] = tif_property.value
 
         result_dict = {}
 
-        for result in frame.tifresult_set.all():
+        for result in frame.dataobjectresult_set.all():
             result_dict[result.result_source] = {'type':result.result_type, 'value':result.result_value}
 
         response.append({'id': frame.id,
@@ -182,15 +211,23 @@ def getNewestID(request):
         return(JsonResponse(nID, safe=False))
     except IndexError:
         return(HttpResponseNotFound('Lack of processed data'))
+#
 
 
-def fetchOps(request):
-    response = {}
-    for op in operations.AVAILABLE_OPERATIONS:
-        response[op] = operations.AVAILABLE_OPERATIONS[op]['properties']
-    return(HttpResponse(json.dumps(response)))
+# ROUTINES CONTROL
+def fetchRoutine(request):
+    return(HttpResponse(json.dumps(init_ops.op_list)))
 
 
+@csrf_exempt
+def setRoutine(request):
+    new_routine = json.loads(request.body)['new_routine']
+    init_ops.op_list = new_routine
+    return(HttpResponse(json.dumps('set')))
+#
+
+
+# FILE DOWNLOAD CONTROL
 class CleanFileResponse(FileResponse):
     def __init__(self, temp, **kwargs):
         super().__init__(open(temp.name, 'rb'), **kwargs)
@@ -226,13 +263,4 @@ def download_files(request):
         response['Content-Length'] = tmp.tell()
 
         return response
-
-
-def fetchRoutine(request):
-    return(HttpResponse(json.dumps(init_ops.op_list)))
-
-@csrf_exempt
-def setRoutine(request):
-    new_routine = json.loads(request.body)['new_routine']
-    init_ops.op_list = new_routine
-    return(HttpResponse(json.dumps('set')))
+#
