@@ -132,7 +132,6 @@ def upload_file(request):
 @receiver(post_save, sender=DataObject, dispatch_uid='post_upload_operations')
 def postUploadOperations(sender, instance, **kwargs):
     if(not instance.is_processed):
-        pass
         # instance.addProperties()  # Parses frame for its native properties
         for operation in init_ops.op_list:
             operations.AVAILABLE_OPERATIONS[operation['operation']]['instance'](instance, **operation['params'])

@@ -9,6 +9,7 @@ import json
 import time
 from . import init_ops
 from .lib import operations
+from .lib.data_extractors import EXTRACTORS
 
 
 def generate_save_path(instance, filename):
@@ -48,6 +49,9 @@ class DataObject(models.Model):
     def setDeleteStatus(self, status):
         self.to_delete = status
         super().save()
+
+    def getData(self):
+        return(EXTRACTORS[self.object_type](self.upload.path))
 
     def addProperty(self, key, value):
         self.dataobjectproperty_set.create(key=key, value=value)
