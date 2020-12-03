@@ -16,8 +16,24 @@ def extractFrames(data_object):
             i = i + 1
 
 
+def extractColumns(data_object):
+    if data_object.object_type == 'CSV':
+        data = data_object.getData()
+        i = 0
+        for column_index in data:
+            data_object.addResult(data[column_index], 'CSV', 'column_' + str(i))
+            i = i + 1
+
+
 AVAILABLE_OPERATIONS = {
     'extractFrames': {'instance': extractFrames,
+                          'properties': {
+                                'type': 'one',
+                                'variables': {}
+                          }
+                     },
+
+    'extractColumns': {'instance': extractColumns,
                           'properties': {
                                 'type': 'one',
                                 'variables': {}

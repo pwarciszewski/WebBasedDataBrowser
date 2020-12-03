@@ -127,17 +127,18 @@ class DataObject(models.Model):
         # ASSUMPTION: data is a pandas.DataFrame
         concrete_file_name = pathlib.Path(self.upload.path).stem
         result_dir = pathlib.Path(self.upload.path).parent / concrete_file_name / 'RESULTs'
+        result_dir.mkdir(parents=True, exist_ok=True)
         result_location = result_dir / (result_source + '.csv')
-        data.to_csv(result_location)
+        data.to_csv(str(result_location))
         no_cache_tag = '?nocachetag=' + str(time.time())
         result_url = '/static' / pathlib.Path(self.upload.url).parent / concrete_file_name / 'RESULTs' / (result_source + '.csv')
         result_url = str(result_url) + no_cache_tag
-        current_set = self.dataobjectresult_set.filter(result_location=result_location,
+        current_set = self.dataobjectresult_set.filter(result_location=str(result_location),
                                                 result_source=result_source,
                                                 result_type='CSV')
         # check if entry already exists; if not an entry is created otherwise url is edited
         if len(current_set) == 0:
-            self.tifresult_set.create(result_location=result_location,
+            self.dataobjectresult_set.create(result_location=str(result_location),
                                       result_source=result_source,
                                       result_value=result_url,
                                       result_type='CSV')

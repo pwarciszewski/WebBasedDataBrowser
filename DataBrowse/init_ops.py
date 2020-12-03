@@ -1,2 +1,3 @@
 # default settings
-op_list = [{'operation': 'extractFrames', 'params': {}}]
+op_list = [{'operation': 'extractFrames', 'params': {}}, 
+           {'operation': 'extractColumns', 'params': {}}]
