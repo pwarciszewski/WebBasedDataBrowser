@@ -178,25 +178,58 @@ def fetchOps(request):
 def fetchRequestedData(request):
     command = json.loads(request.body)
     selected = command['selected']
+    group_by_iter = command['group_by_iter']
     queryset = DataObject.objects.filter(id__in=selected)
     response = []
 
-    for frame in queryset:
-        property_dict = {}
+    if not group_by_iter:
+        for frame in queryset:
+            property_dict = {}
 
-        for tif_property in frame.dataobjectproperty_set.all():
-            property_dict[tif_property.key] = tif_property.value
+            for obj_property in frame.dataobjectproperty_set.all():
+                property_dict[obj_property.key] = obj_property.value
 
-        result_dict = {}
+            result_dict = {}
 
-        for result in frame.dataobjectresult_set.all():
-            result_dict[result.result_source] = {'type':result.result_type, 'value':result.result_value}
+            for result in frame.dataobjectresult_set.all():
+                result_dict[result.result_source] = {'type':result.result_type, 'value':result.result_value}
 
-        response.append({'id': frame.id,
-                         'data': {'name': frame.data_frame_name,
-                                  'sequence_name': frame.sequence_name,
-                                  'properties': property_dict,
-                                  'results': result_dict}})
+            response.append({'id': frame.id,
+                             'data': {'name': frame.data_frame_name,
+                                      'sequence_name': frame.sequence_name,
+                                      'data_source': frame.source,
+                                      'properties': property_dict,
+                                      'iter_token': frame.iteration_token,
+                                      'results': result_dict}})
+    else:
+        for frame in queryset:
+            iter_token = frame.iteration_token
+
+            iteration_index = next((i for i, entry in enumerate(response) if entry['iter_token'] == iter_token), -1)
+            if iteration_index == -1:
+                response.append({'iter_token': iter_token,
+                                 'data_frames': []})
+                iteration_index = len(response) - 1
+            
+            property_dict = {}
+
+            for obj_property in frame.dataobjectproperty_set.all():
+                property_dict[obj_property.key] = obj_property.value
+
+            result_dict = {}
+
+            for result in frame.dataobjectresult_set.all():
+                result_dict[result.result_source] = {'type':result.result_type, 'value':result.result_value}
+
+            response[iteration_index]['data_frames'].append({'id': frame.id,
+                                                             'data': {'name': frame.data_frame_name,
+                                                                      'sequence_name': frame.sequence_name,
+                                                                      'data_source': frame.source,
+                                                                      'properties': property_dict,
+                                                                      'iter_token': frame.iteration_token,
+                                                                      'results': result_dict}})
+
+
     return(HttpResponse(json.dumps(response)))
 
 
