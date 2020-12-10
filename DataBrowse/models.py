@@ -54,7 +54,7 @@ class DataObject(models.Model):
         return(EXTRACTORS[self.object_type](self.upload.path))
 
     def addProperty(self, key, value):
-        self.dataobjectproperty_set.create(key=key, value=value)
+        self.dataobjectproperty_set.create(property_key=key, property_value=value)
 
     def getProperties(self):
         properties_set = self.dataobjectresult_set.all()
@@ -110,12 +110,12 @@ class DataObject(models.Model):
             current_set[0].save()
 
     def _addResultNUM(self, value, result_source, *args):
-        current_set = self.tifresult_set.filter(result_location='NOT APPLICABLE',
+        current_set = self.dataobjectresult_set.filter(result_location='NOT APPLICABLE',
                                                 result_source=result_source,
                                                 result_type='NUM')
 
         if len(current_set) == 0:
-            self.tifresult_set.create(result_location='NOT APPLICABLE',
+            self.dataobjectresult_set.create(result_location='NOT APPLICABLE',
                                       result_source=result_source,
                                       result_value=value,
                                       result_type='NUM')

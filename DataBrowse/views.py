@@ -187,7 +187,7 @@ def fetchRequestedData(request):
             property_dict = {}
 
             for obj_property in frame.dataobjectproperty_set.all():
-                property_dict[obj_property.key] = obj_property.value
+                property_dict[obj_property.property_key] = obj_property.property_value
 
             result_dict = {}
 
@@ -214,7 +214,7 @@ def fetchRequestedData(request):
             property_dict = {}
 
             for obj_property in frame.dataobjectproperty_set.all():
-                property_dict[obj_property.key] = obj_property.value
+                property_dict[obj_property.property_key] = obj_property.property_value
 
             result_dict = {}
 
