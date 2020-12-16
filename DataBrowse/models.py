@@ -58,11 +58,13 @@ class DataObject(models.Model):
         self.dataobjectproperty_set.create(property_key=key, property_value=value)
 
     def getProperties(self):
-        properties_set = self.dataobjectresult_set.all()
+        properties_set = self.dataobjectproperty_set.all()
         for_export = {}
 
         for obj_property in properties_set:
             for_export.update({obj_property.property_key: obj_property.property_value})
+
+        return(for_export)
 
     def _handleExporOfNUM(self, result_num):
         return({result_num.result_source: float(result_num.result_value)})
