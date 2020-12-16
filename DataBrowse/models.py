@@ -34,6 +34,7 @@ class DataObject(models.Model):
 
     upload_date = models.DateTimeField('date uploaded', default=timezone.now)
     is_processed = models.BooleanField(default=False)
+    should_be_processed = models.BooleanField(default=False)
     to_delete = models.BooleanField(default=False)
 
     def __str__(self):

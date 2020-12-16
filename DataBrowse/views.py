@@ -111,13 +111,18 @@ def upload_file(request):
     if request.method == 'POST':
         form = UploadDataFrameForm(request.POST, request.FILES)
         if form.is_valid():
-            dataobject_model = form.save(commit=False)
+            dataobject_model = form.save()
             try:
                 properties_to_add = request.POST['properties']
+                if(type(properties_to_add) == 'dict'):
+                    pass
+                else:
+                    properties_to_add = json.loads(properties_to_add)
                 for prop in properties_to_add:
-                    dataobject_model.addProperty(properties_to_add[prop])
+                    dataobject_model.addProperty(prop, properties_to_add[prop])
             except MultiValueDictKeyError:
                 pass
+            dataobject_model.should_be_processed = True
             dataobject_model.save() # Post upload operations heavylighting is postponed to release the client
             return HttpResponse('Succes')
         else:
@@ -131,7 +136,7 @@ def upload_file(request):
 
 @receiver(post_save, sender=DataObject, dispatch_uid='post_upload_operations')
 def postUploadOperations(sender, instance, **kwargs):
-    if(not instance.is_processed):
+    if(not instance.is_processed and instance.should_be_processed):
         # instance.addProperties()  # Parses frame for its native properties
         for operation in init_ops.op_list:
             operations.AVAILABLE_OPERATIONS[operation['operation']]['instance'](instance, **operation['params'])
