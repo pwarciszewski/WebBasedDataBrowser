@@ -91,7 +91,7 @@ class DataObject(models.Model):
 
         return(for_export)
 
-    def _addResultIMG(self, data, result_source, *args):
+    def addResultIMG(self, data, result_source, *args):
         concrete_file_name = pathlib.Path(self.upload.path).stem
         result_dir = pathlib.Path(self.upload.path).parent / concrete_file_name / 'RESULTs'
         # TODO: replace unnecesarry TIFsl dependencies with new utils functions
@@ -112,7 +112,7 @@ class DataObject(models.Model):
             current_set[0].result_value = result_url
             current_set[0].save()
 
-    def _addResultNUM(self, value, result_source, *args):
+    def addResultNUM(self, value, result_source):
         current_set = self.dataobjectresult_set.filter(result_location='NOT APPLICABLE',
                                                 result_source=result_source,
                                                 result_type='NUM')
@@ -126,13 +126,13 @@ class DataObject(models.Model):
             current_set[0].result_value = value
             current_set[0].save()
 
-    def _addResultCSV(self, data, result_source, *args):
+    def addResultCSV(self, data, result_source, header=True, index=True):
         # ASSUMPTION: data is a pandas.DataFrame
         concrete_file_name = pathlib.Path(self.upload.path).stem
         result_dir = pathlib.Path(self.upload.path).parent / concrete_file_name / 'RESULTs'
         result_dir.mkdir(parents=True, exist_ok=True)
         result_location = result_dir / (result_source + '.csv')
-        data.to_csv(str(result_location))
+        data.to_csv(str(result_location), header=header, index=index)
         no_cache_tag = '?nocachetag=' + str(time.time())
         result_url = '/static' / pathlib.Path(self.upload.url).parent / concrete_file_name / 'RESULTs' / (result_source + '.csv')
         result_url = str(result_url) + no_cache_tag
@@ -148,13 +148,6 @@ class DataObject(models.Model):
         else:
             current_set[0].result_value = result_url
             current_set[0].save()
-
-    def addResult(self, result, result_type, result_source, *args):
-        actions = {'IMG': self._addResultIMG,
-                   'NUM': self._addResultNUM,
-                   'CSV': self._addResultCSV}
-
-        actions[result_type](result, result_source, *args)
 
 
 class DataObjectResult(models.Model):
