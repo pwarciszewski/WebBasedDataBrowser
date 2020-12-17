@@ -174,6 +174,14 @@ class ManyDataObjects:
     def __init__(self, queryset):
         self.queryset = queryset
 
-    def addResult(self, result, result_type, result_source):
+    def addResultNUM(self, result, result_source):
         for item in self.queryset:
-            item.addResult(result, result_type, result_source)
+            item.addResultNUM(result, result_source)
+    
+    def addResultIMG(self, result, result_source, *args):
+        for item in self.queryset:
+            item.addResultIMG(result, result_source, *args)
+
+    def addResultCSV(self, result, result_source, header=True, index=True):
+        for item in self.queryset:
+            item.addResultCSV(result, result_source, header, index)
