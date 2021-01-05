@@ -107,6 +107,7 @@ def getDataTree(request):
 
 
 # FILE UPLOAD AND POST UPLOAD OPERATIONS CONTROL
+@csrf_exempt
 def upload_file(request):
     if request.method == 'POST':
         form = UploadDataFrameForm(request.POST, request.FILES)
