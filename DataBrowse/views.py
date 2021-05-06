@@ -81,8 +81,8 @@ def getAllDataTree():
         item_day = date.strftime('%d')
 
         expanded_y = date.year == now.year
-        expanded_m = date.month == now.month
-        expanded_d = date.day == now.day
+        expanded_m = (date.month == now.month and date.year == now.year)
+        expanded_d = (date.day == now.day and date.month == now.month and date.year == now.year)
 
         item_seq_name = item.sequence_name
         item_name = item.data_frame_name
