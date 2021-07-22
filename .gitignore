@@ -2,3 +2,5 @@
 /uploads
 /DataBrowse/migrations/*
 !/DataBrowse/migrations/__init__.py
+DataBrowse/lib/operations_old.py
+DataBrowse/views_old.py
