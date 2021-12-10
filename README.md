@@ -1,4 +1,6 @@
 # WebBasedDataBrowser
+Works with Django 3.0
+
 For the first run exec following commands:
 
 python manage.py makemigrations
