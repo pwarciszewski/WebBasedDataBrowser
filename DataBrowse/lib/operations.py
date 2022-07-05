@@ -39,10 +39,8 @@ def extractFrames(data_object):
 def extractColumns(data_object):
     if data_object.object_type == 'CSV':
         data = data_object.getData()
-        i = 0
-        for column_index in data:
-            data_object.addResultCSV(data[column_index], 'column_' + str(i))
-            i = i + 1
+        for column_index in data.columns:
+            data_object.addResultCSV(data[column_index], column_index)
 
 def subtractImages(data_object, id1, id2, norm_min, norm_max):
     if data_object.object_type == 'TIF':
